@@ -6,6 +6,8 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <sys/mman.h>
 #include <unistd.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -679,11 +681,16 @@ static void task_upload(task_t *t)
 	task_free(t);
 }
 
+static int* count;
 
 // main(argc, argv)
 //	The main loop!
 int main(int argc, char *argv[])
 {
+  count = mmap(NULL, sizeof *count, PROT_READ | PROT_WRITE,
+	       MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+  *count = 0;
+  
 	task_t *tracker_task, *listen_task, *t;
 	struct in_addr tracker_addr;
 	int tracker_port;
@@ -759,13 +766,46 @@ int main(int argc, char *argv[])
 	register_files(tracker_task, myalias);
 
 	// First, download files named on command line.
+	pid_t dpid;
 	for (; argc > 1; argc--, argv++)
 		if ((t = start_download(tracker_task, argv[1])))
-			task_download(t, tracker_task);
+		  {
+		    dpid = fork();
+		    if (dpid == 0) {
+		      task_download(t, tracker_task);
+		      (*count)++;
+		      message("task done and count = %d\n", *count);
+		      exit(0);
+		    }
+		    else if (dpid > 0)
+		      continue;
+		    else
+		      error("fork error at download");
+		  }
 
+	while (*count > 0)
+	{
+	  waitpid(dpid, NULL, 0);
+	  --(*count);
+	  message("waited and count decremented to %d\n", *count);
+	}
+
+	message("okay done waiting lets upload\n");
+	
 	// Then accept connections from other peers and upload files to them!
 	while ((t = task_listen(listen_task)))
-		task_upload(t);
+	  {
+	    pid_t pid = fork();
+	    if(pid == 0)
+	      task_upload(t);
+	    else if (pid > 0)
+	      {
+		waitpid(-1, NULL, WNOHANG);
+		continue;
+	      }
+	    else
+	      error("fork error at upload");
+	  }
 
 	return 0;
 }
