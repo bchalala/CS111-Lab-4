@@ -686,11 +686,7 @@ static int* count;
 // main(argc, argv)
 //	The main loop!
 int main(int argc, char *argv[])
-{
-  count = mmap(NULL, sizeof *count, PROT_READ | PROT_WRITE,
-	       MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-  *count = 0;
-  
+{  
 	task_t *tracker_task, *listen_task, *t;
 	struct in_addr tracker_addr;
 	int tracker_port;
@@ -765,6 +761,10 @@ int main(int argc, char *argv[])
 	listen_task = start_listen();
 	register_files(tracker_task, myalias);
 
+	count = mmap(NULL, sizeof *count, PROT_READ | PROT_WRITE,
+	             MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+	*count = 0;
+	
 	// First, download files named on command line.
 	pid_t dpid;
 	for (; argc > 1; argc--, argv++)
