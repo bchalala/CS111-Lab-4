@@ -772,8 +772,9 @@ int main(int argc, char *argv[])
 		  {
 		    dpid = fork();
 		    if (dpid == 0) {
-		      task_download(t, tracker_task);
 		      (*count)++;
+		      task_download(t, tracker_task);
+		      //(*count)++;
 		      message("task done and count = %d\n", *count);
 		      exit(0);
 		    }
@@ -783,12 +784,14 @@ int main(int argc, char *argv[])
 		      error("fork error at download");
 		  }
 
+	
 	while (*count > 0)
 	{
-	  waitpid(dpid, NULL, 0);
+	  waitpid(-1, NULL, 0);
 	  --(*count);
 	  message("waited and count decremented to %d\n", *count);
 	}
+	
 
 	message("okay done waiting lets upload\n");
 	
