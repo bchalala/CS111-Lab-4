@@ -659,6 +659,22 @@ static void task_upload(task_t *t)
             break;
     }
 
+    DIR* dir;
+    struct dirent* dp;
+
+    if ((dir = opendir(".")) == NULL)
+	error("Cannot open current directory\n");
+
+    while ((dp = readdir(dir)) != NULL)
+      if ((strcmp(dp->d_name, t->filename) == 0))
+	break;
+
+    if (dp == NULL)
+      {
+	error("File %s does not exist in current directory\n", t->filename);
+	goto exit;
+      }
+
     assert(t->head == 0);
     if (osp2p_snscanf(t->buf, t->tail, "GET %s OSP2P\n", t->filename) < 0) {
         error("* Odd request %.*s\n", t->tail, t->buf);
