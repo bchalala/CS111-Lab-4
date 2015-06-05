@@ -672,11 +672,12 @@ static void task_upload(task_t *t)
     if ((dir = opendir(".")) == NULL)
 	error("Cannot open current directory\n");
 
+    int exists;
     while ((dp = readdir(dir)) != NULL)
-      if ((strcmp(dp->d_name, t->filename) == 0))
+      if ((exists = (strcmp(dp->d_name, t->filename)) == 0))
 	break;
 
-    if (dp == NULL)
+    if (dp == NULL && exists != 0)
       {
 	error("File %s does not exist in current directory\n", t->filename);
 	goto exit;
