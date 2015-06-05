@@ -37,8 +37,9 @@ static int listen_port;
  * a bounded buffer that simplifies reading from and writing to peers.
  */
 
-#define TASKBUFSIZ	4096	// Size of task_t::buf
-#define FILENAMESIZ	256	// Size of task_t::filename
+#define TASKBUFSIZ	16384   // Size of task_t::buf
+#define FILENAMESIZ	256	    // Size of task_t::filename
+#define MAXFILESIZ  65536   // Maximum allowed file size. Large enough to download cats.
 
 typedef enum tasktype {		// Which type of connection is this?
     TASK_TRACKER,		// => Tracker connection
@@ -580,10 +581,16 @@ static void task_download(task_t *t, task_t *tracker_task)
         } else if (ret == TBUF_END && t->head == t->tail)
             /* End of file */
             break;
-
+        
         ret = write_from_taskbuf(t->disk_fd, t);
         if (ret == TBUF_ERROR) {
             error("* Disk write error");
+            goto try_again;
+        }
+
+        if (t->total_written > MAXFILESIZ)
+        {
+            error("Attempted file download exceeds max file size.\n");
             goto try_again;
         }
     }
@@ -712,7 +719,6 @@ exit:
     task_free(t);
 }
 
-static int* count;
 
 // main(argc, argv)
 //	The main loop!
@@ -724,6 +730,7 @@ int main(int argc, char *argv[])
     char *s;
     const char *myalias;
     struct passwd *pwent;
+    int count = 0;
 
     // Default tracker is read.cs.ucla.edu
     osp2p_sscanf("131.179.80.139:11111", "%I:%d",
@@ -792,7 +799,6 @@ argprocess:
     listen_task = start_listen();
     register_files(tracker_task, myalias);
 
-    *count = 0;
 
     // First, download files named on command line.
     pid_t dpid;
@@ -802,24 +808,24 @@ argprocess:
             dpid = fork();
             if (dpid == 0) {
                 task_download(t, tracker_task);
-                message("task done and count = %d\n", *count);
+                message("download task done\n");
                 exit(0);
             }
             else if (dpid > 0)
             {
-                (*count)++;
+                count++;
                 continue;
             }
             else
-                error("fork error at download");
+                error("fork error at download\n");
         }
 
 
-    while (*count > 0)
+    while (count > 0)
     {
         waitpid(-1, NULL, 0);
-        --(*count);
-        message("waited and count decremented to %d\n", *count);
+        count--;
+        message("waited and count decremented to %d\n", count);
     }
 
 
