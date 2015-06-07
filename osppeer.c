@@ -581,7 +581,7 @@ static void task_download(task_t *t, task_t *tracker_task)
         } else if (ret == TBUF_END && t->head == t->tail)
             /* End of file */
             break;
-        
+
         ret = write_from_taskbuf(t->disk_fd, t);
         if (ret == TBUF_ERROR) {
             error("* Disk write error");
@@ -664,30 +664,37 @@ static void task_upload(task_t *t)
         } else if (ret == TBUF_END
                 || (t->tail && t->buf[t->tail-1] == '\n'))
             break;
-    }
-
-    DIR* dir;
-    struct dirent* dp;
-
-    if ((dir = opendir(".")) == NULL)
-	error("Cannot open current directory\n");
-
-    int exists;
-    while ((dp = readdir(dir)) != NULL)
-      if ((exists = (strcmp(dp->d_name, t->filename)) == 0))
-	break;
-
-    if (dp == NULL && exists != 0)
-      {
-	error("File %s does not exist in current directory\n", t->filename);
-	goto exit;
-      }
+    }    
 
     assert(t->head == 0);
     if (osp2p_snscanf(t->buf, t->tail, "GET %s OSP2P\n", t->filename) < 0) {
         error("* Odd request %.*s\n", t->tail, t->buf);
         goto exit;
     }
+
+    DIR* dir;
+    struct dirent* dp;
+    dir = opendir(".");
+
+    if (dir  == NULL)
+        error("Cannot open current directory\n");
+    
+    int exists;
+    dp = readdir(dir);
+    while (dp != NULL)
+    {
+        exists = strcmp(dp->d_name, t->filename);
+        if (exists == 0)
+            break;
+        dp = readdir(dir);
+    }
+
+    if (dp == NULL && exists != 0)
+    {
+        error("File %s does not exist in current directory\n", t->filename);
+        goto exit;
+    }
+
     t->head = t->tail = 0;
 
     t->disk_fd = open(t->filename, O_RDONLY);
