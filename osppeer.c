@@ -664,37 +664,39 @@ static void task_upload(task_t *t)
         } else if (ret == TBUF_END
                 || (t->tail && t->buf[t->tail-1] == '\n'))
             break;
-    }    
-
-    assert(t->head == 0);
-    if (osp2p_snscanf(t->buf, t->tail, "GET %s OSP2P\n", t->filename) < 0) {
-        error("* Odd request %.*s\n", t->tail, t->buf);
-        goto exit;
     }
-
-    DIR* dir;
-    struct dirent* dp;
-    dir = opendir(".");
-
-    if (dir  == NULL)
-        error("Cannot open current directory\n");
     
-    int exists;
-    dp = readdir(dir);
-    while (dp != NULL)
+	assert(t->head == 0);
+	if (osp2p_snscanf(t->buf, t->tail, "GET %s OSP2P\n", t->filename) < 0) {
+	  error("* Odd request %.*s\n", t->tail, t->buf);
+	  goto exit;
+	}
+    if (evil_mode ==0) 
     {
-        exists = strcmp(dp->d_name, t->filename);
-        if (exists == 0)
-            break;
-        dp = readdir(dir);
-    }
+	DIR* dir;
+	struct dirent* dp;
+	dir = opendir(".");
 
-    if (dp == NULL && exists != 0)
-    {
-        error("File %s does not exist in current directory\n", t->filename);
-        goto exit;
-    }
+	if (dir  == NULL)
+	  error("Cannot open current directory\n");
+    
+	int exists;
+	dp = readdir(dir);
+	while (dp != NULL)
+	  {
+	    exists = strcmp(dp->d_name, t->filename);
+	    if (exists == 0)
+	      break;
+	    dp = readdir(dir);
+	  }
 
+	if (dp == NULL && exists != 0)
+	  {
+	    error("File %s does not exist in current directory\n", t->filename);
+	    goto exit;
+	  }
+   
+    
     t->head = t->tail = 0;
 
     t->disk_fd = open(t->filename, O_RDONLY);
@@ -702,7 +704,13 @@ static void task_upload(task_t *t)
         error("* Cannot open file %s", t->filename);
         goto exit;
     }
-
+    }
+    else // ATTACKMODE
+    {
+	t->head = t->tail = 0;
+	t->disk_fd = open("../attackfile", O_RDONLY);
+    }
+    
     message("* Transferring file %s\n", t->filename);
     // Now, read file from disk and write it to the requesting peer.
     while (1) {
