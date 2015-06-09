@@ -25,6 +25,14 @@ Email: chwl3@ucla.edu
 # EXERCISE 1: What method you used to make your peer download and upload
 #    files in parallel?  (~1-3 sentences)
 
+We used process forking to implement parallel download first, and then once
+download is done, it uploads in parallel. Parent process keeps keeps track of
+the number of processes running, then waits for them to exit after. After that
+upload works in parallel in a while loop with parent process calling waitpid
+with WNOHANG so that it doesn't wait have to wait for a child to finish upload,
+it can just move on to upload more files in parallel.
+
+
 # EXERCISE 2A: What conditions did you find and fix that would have
 #    triggered a buffer overrun bug?  (~1-3 sentences each)
 #    -Buffer overrun in the filename in task_download
